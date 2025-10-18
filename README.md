@@ -37,34 +37,42 @@ Ejemplos de temas incluidos en el alcance:
 
 ---
 
-## 2️⃣ Construcción de la Base de Conocimiento Semántico (Knowledge Base)
+## 2️⃣ Construcción de la Base de Conocimiento Semántico - Arquitectura Propuesta
 
-### 🔹 Extracción de Datos
-Se utilizó **web scraping automatizado** para recolectar información textual desde el sitio web oficial y el perfil de LinkedIn de Celsia.
+![alt text](Arquitectura.drawio.png)
 
-**Tecnologías empleadas:**
-- `Selenium` → para la navegación dinámica y la carga de contenido renderizado con JavaScript.  
-- `BeautifulSoup` → para la limpieza y extracción del contenido textual relevante.  
-- `json` → para almacenar los resultados estructurados.  
+La arquitectura propuesta se basa en un flujo secuencial de componentes que automatizan la adquisición, procesamiento, almacenamiento y consulta de información. Cada módulo cumple un rol específico dentro del ecosistema del canal inteligente de Celsia:
 
-Ejemplo de estructura del dataset:
-```json
-{
-  "fuente": "celsia.com/soluciones-energeticas",
-  "titulo": "Soluciones Energéticas",
-  "contenido": "Celsia ofrece soluciones de energía solar, movilidad eléctrica y eficiencia energética..."
-}
-```
+### 🔹 Selenium – Extracción Automática de Datos  
+El proceso se inicia con **Selenium**, una herramienta de automatización web que permite realizar **web scraping controlado** sobre los portales oficiales de Celsia.  
+Este componente navega por las páginas y extrae la información relevante (por ejemplo, puntos de pago, noticias, procesos de facturación, tarifas, y servicios disponibles), garantizando que los datos estén siempre actualizados.
 
-### 🔹 Preprocesamiento y Segmentación (Chunking)
-El texto recolectado fue sometido a un proceso de limpieza y normalización:
+### 🔹 JSON – Estructuración de la Información  
+Los datos obtenidos mediante Selenium se almacenan en **formato JSON**, lo que facilita su posterior manipulación, transporte e integración con otros módulos del sistema.  
+El formato JSON permite mantener una estructura clara y jerárquica de la información, representando eficientemente texto, categorías y metadatos.
 
-1. Eliminación de etiquetas HTML, caracteres especiales y espacios redundantes.  
-2. Conversión a minúsculas y eliminación de stopwords.  
-3. División del texto en fragmentos semánticamente coherentes (chunks) de entre **300 y 500 palabras** para optimizar la indexación en la base vectorial.  
-4. Almacenamiento de los chunks en formato **CSV**, junto con su fuente original para trazabilidad.
+### 🔹 Pandas – Procesamiento y Limpieza de Datos  
+Con el archivo JSON como entrada, **Pandas** se encarga de realizar la **limpieza, normalización y estructuración tabular** de los datos.  
+Este paso incluye la eliminación de duplicados, la estandarización de campos y la organización de los registros para su posterior indexación semántica.
 
----
+### 🔹 ChromaDB – Almacenamiento Vectorial Semántico  
+Una vez procesada, la información se transforma en **vectores embebidos** y se almacena en **ChromaDB**, una base de datos vectorial optimizada para búsquedas semánticas.  
+Este componente permite que el asistente realice consultas basadas en el significado del texto (no solo coincidencias literales), mejorando la precisión de las respuestas ante preguntas de los usuarios.
+
+### 🔹 Ollama – Modelo de Lenguaje Local  
+**Ollama** actúa como el motor de inteligencia artificial local que ejecuta **modelos de lenguaje (LLMs)** preentrenados.  
+Este modelo interpreta las consultas del usuario, accede a los vectores relevantes en ChromaDB y genera respuestas coherentes, naturales y ajustadas al contexto de la empresa.
+
+### 🔹 LangChain – Orquestación de Procesos y Consultas  
+**LangChain** coordina la interacción entre todos los módulos del sistema.  
+Define la lógica de flujo: recibe la consulta del usuario, consulta el vector store (ChromaDB), formatea la respuesta con el modelo Ollama y la devuelve al canal de comunicación (Streamlit).  
+LangChain también gestiona el *prompting* y los *retrieval chains*, garantizando consistencia y trazabilidad en las respuestas.
+
+### 🔹 Streamlit – Interfaz de Usuario  
+Finalmente, **Streamlit** provee una interfaz web interactiva donde el usuario puede comunicarse con el asistente.  
+El chat permite ingresar consultas en lenguaje natural y visualizar respuestas generadas dinámicamente por el modelo.  
+Además, Streamlit facilita el despliegue del sistema y su acceso desde diferentes dispositivos.
+
 
 ## 3️⃣ Construcción del Aplicativo
 
@@ -75,7 +83,7 @@ Para esta primera versión del sistema Q&A se seleccionó la siguiente configura
 |-------------|--------------------|----------------|
 | **Modelo LLM** | **Gemma 3 4B (Google, vía Ollama)** | Modelo open source liviano (4 billones de parámetros), optimizado para comprensión y generación de texto en español e inglés. Ofrece un excelente equilibrio entre **rendimiento y eficiencia computacional**, ideal para ejecución local o en entornos académicos sin GPU de alto costo. Además, presenta baja tasa de alucinaciones y buen desempeño en tareas de **retrieval-based Q&A**. |
 | **Framework de orquestación** | **LangChain** | Permite integrar el modelo, embeddings y base vectorial en un pipeline RAG (Retrieval-Augmented Generation) modular y escalable. Facilita la construcción del prompt y la cadena de recuperación. |
-| **Embeddings** | `sentence-transformers/all-MiniLM-L6-v2` | Modelo compacto (384 dimensiones), rápido y eficaz para la semántica en español, ampliamente utilizado en entornos de RAG. |
+| **Embeddings** | `nomic-embed-text ` | Modelo de Embeddings de Texto de código abierto. Un modelo de embeddings transforma el texto (palabras, frases, documentos) en vectores numéricos (listas de números) que capturan su significado semántico. |
 | **Base de datos vectorial** | **ChromaDB (open source)** | Ligera, eficiente y de integración directa con LangChain; ideal para almacenar y consultar embeddings de texto. |
 
 ---
@@ -92,11 +100,21 @@ Para esta primera versión del sistema Q&A se seleccionó la siguiente configura
 Se diseñó un prompt de sistema robusto con las siguientes instrucciones:
 
 ```
-Eres un asistente experto en la empresa Celsia. 
-Responde únicamente con base en el contexto proporcionado a continuación. 
-Si la información no se encuentra en el contexto, responde: 
-"No dispongo de esa información actualmente."
-Proporciona respuestas claras, precisas y formales.
+"""**[INSTRUCCIONES CLAVE ZERO-SHOT Y LIMITACIÓN DE FUENTE]**
+Tu ÚNICA tarea es responder a la **PREGUNTA** del usuario, utilizando EXCLUSIVAMENTE la información que se encuentra en el **CONTEXTO** proporcionado a continuación.
+
+**REGLAS ESTRICTAS para evitar alucinaciones:**
+1.  **SI** la respuesta a la PREGUNTA se encuentra explícita o implícitamente en el **CONTEXTO**, genera una respuesta completa y profesional.
+2.  **SI** no puedes encontrar la respuesta en el **CONTEXTO**, o si la información es insuficiente, debes responder **ÚNICAMENTE** con la siguiente frase predefinida: "Lamento no poder ofrecer una respuesta precisa basada en la información disponible. Por favor, consulta los canales oficiales de CELSIA o llama a la línea de servicio al cliente."
+3.  **NUNCA** utilices tu conocimiento general o información que no esté en el **CONTEXTO**. **NUNCA** inventes tarifas, fechas o procesos.
+Coloca el cursor sobre un mensaje para fijarlo
+
+Contexto:
+{context}
+
+Pregunta: {question}
+
+Respuesta:"""
 ```
 
 El contexto se completa dinámicamente con los fragmentos recuperados desde ChromaDB antes de cada consulta del usuario.
@@ -110,23 +128,6 @@ Se implementó una interfaz web simple utilizando **Streamlit**, la cual permite
 - Un campo de entrada para la pregunta del usuario.  
 - Visualización de la respuesta generada por el sistema.  
 - Visualización de los fragmentos de contexto utilizados para la respuesta.  
-
-Estructura base:
-```python
-import streamlit as st
-from langchain.llms import Ollama
-from langchain.chains import RetrievalQA
-from langchain.vectorstores import Chroma
-
-st.title("Asistente Celsia – Q&A Inteligente")
-query = st.text_input("Escribe tu pregunta sobre Celsia:")
-
-if query:
-    result = qa_chain.run(query)
-    st.write(result)
-```
-
----
 
 ## 5️⃣ Pruebas, Documentación y Presentación
 
