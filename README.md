@@ -1,8 +1,11 @@
 # 📘 Proyecto Módulo 1 – Construcción de la Capa de Conocimiento  
 **Empresa Asignada:** CELSIA  
 **Grupo:** 1  
-**Integrantes:** Jonathan Giraldo Diaz Ortega
-                 
+**Integrantes:**    
+Estudiante: Jonathan Giraldo Diaz Ortega - cod 22501577   
+Estudiante: Jhon Stiven Loaiza Rodriguez - cod 22500235   
+Estudiante: Eliphas Levi Arias Abrahan - cod 22500217   
+Estudiante: Juan Manuel Cajigas Eraso - cod 22500447    
 **Módulo:** Capa de Conocimiento  
 **Duración:** Fase 1 – Extracción, Procesamiento y Demostración de la Base de Conocimiento  
 
